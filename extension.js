@@ -16,7 +16,7 @@ function activate(context) {
 	// }
 
 	const regs = {
-		classDef: /(?:^export[\s\S]+?)?class[\s\S]*?{/gm,
+		classDef: /(?:^export[\s\S]+?)?class[\s\S]*?\{/gmu,
 	}
 
 	function getIndexes(str,regex, first = false) {
@@ -29,8 +29,7 @@ function activate(context) {
 			})
 			if (first) return output[0]
 		}
-		if (first) return null
-		return output
+		return output.length === 0 && first ? null : output
 	}
 
 	function classDetector(str) {
@@ -38,6 +37,7 @@ function activate(context) {
 		let match
 
 		while ((match = regs.classDef.exec(str)) != null) {
+			// Finding the end of the class => index
 			let index = regs.classDef.lastIndex
 			let counter = 1
 
@@ -57,9 +57,11 @@ function activate(context) {
 				type: 'Class',
 				export: getIndexes(match[0], /^export/g, true),
 				text: match[0],
-				startClass: getIndexes(match[0], /class/g, true),
-				startBracket: regs.classDef.lastIndex,
-				endBracket: index,
+				global: {
+					startClass: match.index,
+					startBracket: regs.classDef.lastIndex,
+					endBracket: index,
+				}			
 			})
 		}
 		return output
