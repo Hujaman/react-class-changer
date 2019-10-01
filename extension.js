@@ -1,7 +1,7 @@
 // The module 'vscode' contains the VS Code extensibility API
 // Import the module and reference it with the alias vscode in your code below
 const vscode = require('vscode');
-// const fs = require('fs')
+// import { Testfunction } from './src/main'
 
 // this method is called when your extension is activated
 // your extension is activated the very first time the command is executed
@@ -32,31 +32,39 @@ function activate(context) {
 		return output.length === 0 && first ? null : output
 	}
 
-	function classDetector(str) {
+	function findClosingBracket(str, startIndex, brackets = "{}") {
+		let index = startIndex
+		let counter = 1
+
+		while (counter > 0) {
+			index++
+			let value = str[index]
+			switch (value) {
+				case brackets[0]: counter++
+					break
+				case brackets[1]: counter--
+					break
+				default: continue
+			}
+		}
+		return index
+	}
+
+	function classFetcher(str) {
 		const output = []
 		let match
 
 		while ((match = regs.classDef.exec(str)) != null) {
 			// Finding the end of the class => index
 			let index = regs.classDef.lastIndex
-			let counter = 1
 
-			while (counter > 0) {
-				index++
-				let value = str[index]
-				switch (value) {
-					case "{": counter++
-						break
-					case "}": counter--
-						break
-					default: continue
-				}
-			}
+			index = findClosingBracket(str, index)
 
 			output.push({
 				type: 'Class',
-				export: getIndexes(match[0], /^export/g, true),
-				text: match[0],
+				export: /^export/g.test(match[0]),
+				text: str.slice(match.index, index + 1),
+				name: match[0].match(/(?!export|class|\s)\b.+?\b/g)[0],
 				global: {
 					startClass: match.index,
 					startBracket: regs.classDef.lastIndex,
@@ -76,16 +84,20 @@ function activate(context) {
 	// The commandId parameter must match the command field in package.json
 	let disposable = vscode.commands.registerCommand('extension.helloWorld', function () {
 		// The code you place here will be executed every time your command is executed
-		// const text = fs.readFileSync('./testfiles/class.js').toString()
-		let activeEditor = vscode.window.activeTextEditor;
-		const text = activeEditor.document.getText();
+		let activeEditor = vscode.window.activeTextEditor
+		let text
+		try {
+			text = activeEditor.document.getText()
+		} catch(error) {
+			vscode.window.showInformationMessage('Please open a file first');
+			return
+		}
 		
-		const classes = classDetector(text)
+		const classes = classFetcher(text)
 		console.log("Classes", classes)
 
-		// console.log("TEXT", text)
 		// Display a message box to the user
-		vscode.window.showInformationMessage('TEST');
+		vscode.window.showInformationMessage('Classes changed');
 	});
 
 	context.subscriptions.push(disposable);
